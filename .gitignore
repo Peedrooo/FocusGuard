@@ -1,0 +1,30 @@
+# Environments & Secrets
+.venv/
+venv/
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# Runtime local data & downloaded models
+data/
+*.db
+*.db-wal
+*.db-shm
+*.wav
+*.mp3
+*.log
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini

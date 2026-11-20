@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FocusGuard — Monitor Multimodal de Estudos</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <!-- Top Status Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="brand">
+        <span class="brand-dot" id="ws-dot" title="WebSocket"></span>
+        <div>
+          <h1>FocusGuard</h1>
+          <span class="ws-label" id="ws-status-text">Conectando...</span>
+        </div>
+      </div>
+
+      <div class="state-pill state-paused" id="state-pill" title="Estado atual do motor de foco">
+        <span class="state-pulse"></span>
+        <span id="state-pill-text">PAUSED</span>
+      </div>
+
+      <span class="session-clock" id="topbar-timer">00:00:00</span>
+    </div>
+
+    <div class="topbar-actions">
+      <button type="button" class="btn btn-primary" id="btn-session-toggle">
+        Iniciar Sessão
+      </button>
+
+      <button type="button" class="btn btn-success hidden" id="btn-ack-focus">
+        Voltei pro Foco
+      </button>
+
+      <button type="button" class="btn btn-amber hidden" id="btn-end-break">
+        Encerrar Pausa
+      </button>
+
+      <button type="button" class="btn btn-outline" id="btn-privacy-toggle" title="Atalho global: Ctrl+Shift+P">
+        Privacidade (Ctrl+Shift+P)
+      </button>
+
+      <div class="nudge-group">
+        <select id="nudge-level-select" aria-label="Nível do teste">
+          <option value="1">Nível 1 (Toast)</option>
+          <option value="2" selected>Nível 2 (Voz)</option>
+          <option value="3">Nível 3 (Overlay)</option>
+        </select>
+        <button type="button" class="btn btn-danger-soft" id="btn-test-nudge">
+          Testar Puxão de Orelha
+        </button>
+      </div>
+
+      <button type="button" class="btn-pill api-missing" id="btn-api-key-pill">
+        API Key: Pendente
+      </button>
+    </div>
+  </header>
+
+  <!-- Live Intervention Alert Banner (in-dashboard mirror of InterventionCommand) -->
+  <section class="intervention-banner hidden" id="intervention-banner" role="alert">
+    <div class="intervention-banner-content">
+      <strong id="intervention-banner-title">FocusGuard</strong>
+      <p id="intervention-banner-msg"></p>
+    </div>
+    <div class="intervention-banner-actions">
+      <button type="button" class="btn btn-success btn-sm" id="banner-ack-btn">Voltei pro Foco</button>
+      <button type="button" class="btn btn-amber btn-sm" id="banner-break-btn">Pausa 5 min</button>
+      <button type="button" class="btn btn-outline btn-sm" id="banner-dismiss-btn">Dispensar</button>
+    </div>
+  </section>
+
+  <!-- Inline API Key Modal Drawer -->
+  <div class="modal-backdrop hidden" id="api-key-modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-labelledby="api-modal-title">
+      <div class="modal-header">
+        <h2 id="api-modal-title">Configurar GEMINI_API_KEY</h2>
+        <button type="button" class="btn-icon" id="btn-close-api-modal" aria-label="Fechar">✕</button>
+      </div>
+      <p class="modal-desc">
+        A chave é salva apenas localmente no arquivo <code>.env</code> e reconfigura imediatamente o Juiz Semântico e o Coach.
+      </p>
+      <form id="api-key-form" class="stack-form">
+        <label class="field">
+          <span>Chave API do Google Gemini</span>
+          <input
+            type="password"
+            id="api-key-input"
+            placeholder="AIza..."
+            autocomplete="off"
+            required
+          />
+        </label>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btn-cancel-api-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar e Ativar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Dashboard Grid -->
+  <main class="dashboard-grid">
+    <!-- Left Column: Context, Telemetry & Verdicts -->
+    <div class="col-left">
+      <!-- Study Context & Allowances Card -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Contexto de Estudo &amp; Liberações</h2>
+          <span class="badge badge-muted">Zero-Prison</span>
+        </div>
+
+        <form id="goal-form" class="goal-grid">
+          <label class="field">
+            <span>Concurso / Meta</span>
+            <input type="text" id="goal-input" placeholder="Ex: Auditor Fiscal / PF" required />
+          </label>
+          <label class="field">
+            <span>Matéria Atual</span>
+            <input type="text" id="subject-input" placeholder="Ex: Dir. Constitucional" required />
+          </label>
+          <button type="submit" class="btn btn-primary align-end">Atualizar Foco</button>
+        </form>
+
+        <div class="chips-row" id="subject-chips">
+          <button type="button" class="chip" data-subject="Dir. Constitucional">Dir. Constitucional</button>
+          <button type="button" class="chip" data-subject="Dir. Administrativo">Dir. Administrativo</button>
+          <button type="button" class="chip" data-subject="Português">Português</button>
+          <button type="button" class="chip" data-subject="RLM">RLM</button>
+          <button type="button" class="chip" data-subject="Informática">Informática</button>
+          <button type="button" class="chip" data-subject="Contabilidade">Contabilidade</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <form id="allowance-form" class="allowance-grid">
+          <label class="field">
+            <span>Liberar app/site por X min</span>
+            <input type="text" id="allowance-pattern" placeholder="Ex: youtube.com ou whatsapp" required />
+          </label>
+          <label class="field field-sm">
+            <span>Minutos</span>
+            <input type="number" id="allowance-minutes" value="5" min="1" max="240" required />
+          </label>
+          <label class="field">
+            <span>Motivo</span>
+            <input type="text" id="allowance-reason" value="Liberado pelo usuário" />
+          </label>
+          <button type="submit" class="btn btn-outline align-end">Liberar</button>
+        </form>
+
+        <div class="allowances-list" id="allowances-list">
+          <span class="empty-hint">Nenhuma liberação temporária ativa.</span>
+        </div>
+      </section>
+
+      <!-- Study Time per Subject Card -->
+      <section class="card" id="subject-stats-card">
+        <div class="card-header">
+          <h2>Tempo Estudado por Assunto</h2>
+          <div class="badge-group">
+            <span class="badge badge-green mono-sm" id="subjects-total-badge">Total: 00:00:00</span>
+            <div class="segmented-toggle" role="group" aria-label="Período de estudo por assunto">
+              <button type="button" class="seg-btn active" data-subject-period="all">Total</button>
+              <button type="button" class="seg-btn" data-subject-period="today">Hoje</button>
+            </div>
+          </div>
+        </div>
+        <div class="subject-stats-list" id="subject-stats-list">
+          <div class="empty-hint">Inicie a sessão para acumular e acompanhar seu tempo por assunto.</div>
+        </div>
+      </section>
+
+      <!-- Live Telemetry & Vision HUD -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Telemetria ao Vivo &amp; Visão Local</h2>
+          <div class="badge-group">
+            <span class="badge badge-muted" id="bg-audio-badge">Sem áudio em background</span>
+            <span class="badge badge-privacy" id="privacy-hud-badge" title="Nenhum frame ou screenshot é salvo em disco">RAM Efêmera</span>
+          </div>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi-box">
+            <span class="kpi-label">Tempo em Foco</span>
+            <strong class="kpi-value mono" id="kpi-focus-time">00:00:00</strong>
+          </div>
+          <div class="kpi-box">
+            <span class="kpi-label">Focus Score</span>
+            <strong class="kpi-value mono accent-green" id="kpi-focus-score">100%</strong>
+          </div>
+          <div class="kpi-box">
+            <span class="kpi-label">Distração</span>
+            <strong class="kpi-value mono accent-red" id="kpi-distraction-time">00:00</strong>
+          </div>
+          <div class="kpi-box">
+            <span class="kpi-label">Intervenções</span>
+            <strong class="kpi-value mono" id="kpi-interventions">0</strong>
+          </div>
+        </div>
+
+        <div class="os-context-box">
+          <div class="os-row">
+            <span class="os-label">Processo:</span>
+            <code id="os-process">—</code>
+            <span class="badge badge-cyan" id="os-monitor-badge">M1</span>
+            <span class="badge badge-danger hidden" id="os-sensitive-badge">Janela Sensível (Bloq. Captura)</span>
+          </div>
+          <div class="os-row">
+            <span class="os-label">Janela:</span>
+            <span class="os-val" id="os-title">Aguardando contexto do sistema...</span>
+          </div>
+          <div class="os-row">
+            <span class="os-label">URL:</span>
+            <span class="os-val mono-sm" id="os-url">—</span>
+          </div>
+        </div>
+
+        <div class="vision-grid">
+          <div class="meter-item">
+            <div class="meter-head">
+              <span>Presença (Webcam)</span>
+              <strong id="vision-presence-val">Aguardando</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-green" id="vision-presence-bar" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="meter-item">
+            <div class="meter-head">
+              <span>Olhar na Tela</span>
+              <strong id="vision-gaze-val">0%</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-cyan" id="vision-gaze-bar" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="meter-item">
+            <div class="meter-head">
+              <span>Fadiga / PERCLOS</span>
+              <strong id="vision-fatigue-val">0%</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-amber" id="vision-fatigue-bar" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="meter-item">
+            <div class="meter-head">
+              <span>Alerta de Celular</span>
+              <strong id="vision-phone-val">Não detectado</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-red" id="vision-phone-bar" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Telas Visíveis, Processos & Padrão de Uso -->
+        <div class="usage-panel" id="usage-telemetry-panel">
+          <div class="usage-panel-head">
+            <h3>Telas Visíveis, Processos &amp; Padrão de Uso</h3>
+            <span class="badge badge-muted" id="usage-interaction-mode">idle</span>
+          </div>
+          <div class="usage-metrics-row">
+            <div class="usage-mini-kpi">
+              <span>Input Ativo (60s)</span>
+              <strong class="mono" id="usage-input-ratio">0%</strong>
+            </div>
+            <div class="usage-mini-kpi">
+              <span>Alt-Tabs / min</span>
+              <strong class="mono" id="usage-switches">0</strong>
+            </div>
+            <div class="usage-mini-kpi">
+              <span>Mesma Tela</span>
+              <strong class="mono" id="usage-same-screen">0s</strong>
+            </div>
+          </div>
+          <div class="telemetry-lists-grid">
+            <div class="telemetry-sublist">
+              <span class="sublist-title">Telas Visíveis (M1 / M2)</span>
+              <div class="window-list" id="visible-windows-list">
+                <span class="empty-hint">Nenhuma janela visível capturada ainda.</span>
+              </div>
+            </div>
+            <div class="telemetry-sublist">
+              <span class="sublist-title">Processos Notáveis</span>
+              <div class="process-list" id="notable-processes-list">
+                <span class="empty-hint">Nenhum processo destacado.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Semantic Verdict Feed -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Feed do Juiz Semântico</h2>
+          <span class="badge badge-muted" id="verdicts-count">0 deduções</span>
+        </div>
+        <div class="verdict-feed" id="verdict-feed">
+          <div class="empty-hint">Inicie a sessão para acompanhar as análises contextuais do Gemini.</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Right Column: Prominent Live Webcam + Voice Controls, BudgetGuard & Notes -->
+    <div class="col-right">
+      <!-- Live Webcam Preview, Lateral Calibration & Voice Controls -->
+      <section class="card" id="webcam-card">
+        <div class="card-header">
+          <h2>Webcam Ao Vivo, Voz &amp; Calibração Lateral</h2>
+          <div class="badge-group">
+            <span class="badge badge-danger hidden" id="vision-unseen-timer-badge">Sem te ver: 0s / 20s</span>
+            <span class="badge badge-muted" id="vision-gaze-badge">Aguardando Câmera</span>
+          </div>
+        </div>
+
+        <div class="webcam-toolbar">
+          <label class="toggle-speak">
+            <input type="checkbox" id="webcam-show-toggle" checked />
+            <span>Mostrar Câmera</span>
+          </label>
+          <label class="toggle-speak">
+            <input type="checkbox" id="webcam-annotate-toggle" checked />
+            <span>Overlay Diagnóstico</span>
+          </label>
+          <div class="pose-badges-row">
+            <span class="badge badge-muted mono-sm" id="vision-yaw-badge">Yaw: —</span>
+            <span class="badge badge-muted mono-sm" id="vision-pitch-badge">Pitch: —</span>
+            <span class="badge badge-muted" id="vision-pos-badge">Posição Lateral: —</span>
+          </div>
+        </div>
+
+        <div class="webcam-preview-wrap" id="webcam-preview-wrap">
+          <img
+            id="webcam-preview-img"
+            class="hidden"
+            alt="Preview ao vivo da webcam (processamento local em RAM)"
+          />
+          <div class="webcam-placeholder" id="webcam-preview-placeholder">
+            Aguardando frame da webcam...
+          </div>
+        </div>
+
+        <div class="calibration-actions">
+          <button type="button" class="btn btn-outline btn-sm cal-btn" data-cal-mode="primary_screen">
+            🎯 Calibrar Monitor Principal
+          </button>
+          <button type="button" class="btn btn-outline btn-sm cal-btn" data-cal-mode="secondary_screen">
+            🖥️ + 2º Monitor
+          </button>
+          <button type="button" class="btn btn-outline btn-sm cal-btn" data-cal-mode="phone_pose">
+            📱 Pose Celular
+          </button>
+          <button type="button" class="btn btn-outline btn-sm cal-btn" data-cal-mode="reset">
+            ↺ Resetar
+          </button>
+          <span class="sub-hint" id="webcam-cal-status"></span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="quick-actions-row">
+          <button type="button" class="btn-chip" data-quick-msg="Me explica a questão na minha tela">
+            Me explica a questão na minha tela
+          </button>
+          <button type="button" class="btn-chip" data-quick-msg="Tô travado nessa matéria">
+            Tô travado nessa matéria
+          </button>
+          <button type="button" class="btn-chip btn-chip-amber" id="btn-quick-break">
+            Pausa de 5 min
+          </button>
+        </div>
+
+        <div class="voice-controls">
+          <button type="button" class="btn btn-outline" id="btn-web-mic">
+            🎙️ Gravar Mic (Web)
+          </button>
+          <button type="button" class="btn btn-outline" id="btn-native-ptt">
+            🎧 Mic Windows (PTT)
+          </button>
+          <button type="button" class="btn btn-danger-soft btn-sm hidden" id="btn-native-ptt-stop">
+            ⏹️ Parar e Enviar
+          </button>
+          <span class="voice-status" id="voice-status-text">Pronto para ouvir</span>
+        </div>
+
+        <div class="vu-row">
+          <span class="badge badge-muted" id="mic-state-badge">Mic: idle</span>
+          <div class="vu-track" title="Nível de entrada do microfone (VU Meter)">
+            <div class="vu-fill" id="mic-vu-bar" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Áudio, Fone & Microfone -->
+        <div class="audio-panel">
+          <div class="audio-panel-head">
+            <h3>Áudio, Fone &amp; Microfone</h3>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-test-audio">
+              🔊 Testar Voz no Fone
+            </button>
+          </div>
+          <div class="audio-devices-grid">
+            <label class="field">
+              <span>Saída de Áudio (Fone)</span>
+              <select id="audio-output-select">
+                <option value="">Padrão do Sistema</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Microfone</span>
+              <select id="audio-input-select">
+                <option value="">Padrão do Sistema</option>
+              </select>
+            </label>
+          </div>
+          <label class="toggle-speak audio-speak-all">
+            <input type="checkbox" id="setting-speak-all" checked />
+            <span>Falar em todas as detecções (incluindo Nível 1 e celular)</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- BudgetGuard Meter & Settings -->
+      <section class="card">
+        <div class="card-header">
+          <h2>BudgetGuard &amp; Ajustes</h2>
+          <span class="badge badge-green" id="budget-status-badge">Dentro do teto</span>
+        </div>
+
+        <div class="budget-grid">
+          <div class="budget-metric">
+            <div class="meter-head">
+              <span>Gasto Diário</span>
+              <strong class="mono" id="budget-daily-text">US$ 0.0000 (R$ 0,00)</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-cyan" id="budget-daily-bar" style="width: 0%"></div>
+            </div>
+            <small class="sub-hint" id="budget-daily-cap">Teto diário: US$ 0.35</small>
+          </div>
+
+          <div class="budget-metric">
+            <div class="meter-head">
+              <span>Gasto Mensal (vs Google AI Pro US$ 10/mês)</span>
+              <strong class="mono" id="budget-monthly-text">US$ 0.0000 (R$ 0,00)</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill fill-green" id="budget-monthly-bar" style="width: 0%"></div>
+            </div>
+            <small class="sub-hint" id="budget-monthly-cap">Teto configurado: US$ 8.00 / ref. US$ 10.00/mês</small>
+          </div>
+        </div>
+
+        <div class="tokens-row mono-sm">
+          <span>Tokens Entrada: <strong id="budget-tokens-in">0</strong></span>
+          <span>Tokens Saída: <strong id="budget-tokens-out">0</strong></span>
+          <span>Chamadas Hoje: <strong id="budget-calls">0</strong></span>
+        </div>
+
+        <div class="divider"></div>
+
+        <form id="settings-form" class="settings-grid">
+          <label class="field">
+            <span>Personalidade do Coach</span>
+            <select id="setting-persona">
+              <option value="firme">Firme e Direto (Padrão)</option>
+              <option value="equilibrado">Equilibrado</option>
+              <option value="sargento">Modo Sargento</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Teto Diário (US$)</span>
+            <input type="number" id="setting-max-daily" step="0.05" min="0.05" max="100" value="0.35" />
+          </label>
+          <label class="field">
+            <span>Teto Mensal (US$)</span>
+            <input type="number" id="setting-max-monthly" step="0.50" min="0.50" max="500" value="8.00" />
+          </label>
+          <label class="field">
+            <span>Graça YouTube Música (s)</span>
+            <input type="number" id="setting-yt-grace" step="5" min="0" max="600" value="45" />
+          </label>
+          <label class="field">
+            <span>Alerta Celular (s)</span>
+            <input type="number" id="setting-phone-sec" step="1" min="3" max="300" value="15" />
+          </label>
+          <label class="field">
+            <span>Alerta Sem Te Ver (s)</span>
+            <input type="number" id="setting-camera-unseen-sec" step="5" min="5" max="180" value="20" />
+          </label>
+          <label class="field">
+            <span>Modo de Captura</span>
+            <select id="setting-capture-mode">
+              <option value="all_monitors">Todos os Monitores</option>
+              <option value="primary_monitor">Monitor Principal</option>
+              <option value="active_monitor">Monitor Ativo</option>
+            </select>
+          </label>
+          <button type="submit" class="btn btn-outline align-end">Salvar Ajustes</button>
+        </form>
+      </section>
+
+      <!-- Study Notes Card -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Notas Rápidas de Estudo</h2>
+          <span class="badge badge-muted" id="notes-count">0 notas</span>
+        </div>
+        <form id="note-form" class="note-composer">
+          <input type="text" id="note-input" placeholder="Anotar ponto-chave / erro de questão..." required />
+          <button type="submit" class="btn btn-outline">Anotar</button>
+        </form>
+        <div class="notes-list" id="notes-list">
+          <div class="empty-hint">Nenhuma anotação registrada nesta sessão.</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Bottom Compact Card: Coach Text Chat History & Composer -->
+    <section class="card chat-card chat-bottom-card" id="chat-bottom-card">
+      <div class="card-header">
+        <h2>Coach Firme — Histórico de Chat &amp; Texto</h2>
+        <div class="badge-group">
+          <span class="badge badge-cyan" id="persona-badge">Persona: firme</span>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-toggle-chat-panel">
+            Minimizar
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-collapsible-body" id="chat-collapsible-body">
+        <div class="chat-history" id="chat-history">
+          <div class="empty-hint">
+            Mande uma pergunta por texto, use o microfone do navegador ou o PTT nativo do Windows (<code>Ctrl+Shift+Space</code>).
+          </div>
+        </div>
+
+        <form id="chat-form" class="chat-composer">
+          <input
+            type="text"
+            id="chat-input"
+            placeholder="Fale com o Coach (ex: resume art. 5º CF)..."
+            autocomplete="off"
+          />
+          <label class="toggle-speak" title="Reproduzir resposta por voz">
+            <input type="checkbox" id="chat-speak-toggle" checked />
+            <span>Voz</span>
+          </label>
+          <button type="submit" class="btn btn-primary" id="btn-chat-send">Enviar</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast-stack" id="toast-stack"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

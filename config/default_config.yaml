@@ -1,0 +1,157 @@
+# FocusGuard — Configuracao Padrao (Zero-Prison Semantic-First)
+user_name: "Pedro"
+study_goal: "Estudo para Concurso Publico"
+current_subject: "Geral"
+
+# Personalidade do Coach: "firme" (padrao), "equilibrado", "sargento"
+coach_persona: "firme"
+
+# Modelos Gemini e limites financeiros (BudgetGuard)
+ai:
+  primary_model: "gemini-3.5-flash-lite"
+  fallback_models:
+    - "gemini-3.1-flash-lite"
+    - "gemini-2.5-flash-lite"
+  max_daily_usd: 0.35
+  max_monthly_usd: 8.00
+  brl_exchange_rate: 5.80
+  capture_mode: "all_monitors"
+  screenshot_max_width: 1400
+  screenshot_jpeg_quality: 70
+  # Intervalos adaptativos do Juiz Semantico (segundos)
+  focused_recheck_interval_sec: 35
+  ambiguous_recheck_interval_sec: 15
+  window_switch_debounce_sec: 6
+
+# Regras comportamentais e tempos (segundos)
+behavior:
+  youtube_music_grace_sec: 30
+  neutral_grace_sec: 25
+  distraction_level1_sec: 25
+  distraction_level2_sec: 90
+  distraction_level3_sec: 180
+  intervention_cooldown_sec: 45
+  absence_alert_sec: 120
+  camera_not_seeing_user_sec: 20
+  passive_freeze_alert_sec: 240
+  phone_distraction_sec: 15
+  idle_webcam_check_sec: 12
+  speak_on_all_interventions: true
+  show_windows_toast: false
+  show_level3_overlay: false
+  allow_looking_down_for_notes: true
+  require_ai_phone_confirmation: true
+  always_attach_webcam_to_judge: true
+  drowsiness_perclos_threshold: 0.45
+  drowsiness_window_sec: 25
+  pomodoro_focus_suggestion_min: 50
+
+# Dicas suaves (NAO sao prisao — o Juiz Semantico sempre tem a palavra final!)
+hints:
+  likely_study_keywords:
+    - "tecconcursos"
+    - "tec concursos"
+    - "qconcursos"
+    - "estrategiaconcursos"
+    - "grancursos"
+    - "anki"
+    - "questoes"
+    - "simulado"
+    - "edital"
+    - "lei "
+    - "constituicao"
+    - "direito "
+    - "portugues"
+    - "raciocinio logico"
+  # Apps multiuso que dependem 100% do conteudo real na tela para julgar
+  context_dependent_apps:
+    - "obsidian"
+    - "antigravity"
+    - "code"
+    - "chrome"
+    - "msedge"
+    - "brave"
+    - "firefox"
+    - "youtube"
+    - "notebooklm"
+    - "gemini"
+    - "whatsapp"
+    - "telegram"
+  # Sites/rotas de altissima suspeita de distracao (ainda respeitam liberacao temporaria do coach)
+  high_suspicion_patterns:
+    - "youtube.com/shorts"
+    - "instagram.com"
+    - "tiktok.com"
+    - "twitter.com"
+    - "x.com"
+    - "reddit.com"
+    - "twitch.tv"
+    - "netflix.com"
+    - "globoesporte"
+    - "ge.globo"
+
+# Privacidade (NUNCA captura imagem nem envia para nuvem)
+privacy:
+  blocked_process_names:
+    - "bitwarden.exe"
+    - "1password.exe"
+    - "keepass.exe"
+    - "keepassxc.exe"
+  blocked_title_keywords:
+    - "inprivate"
+    - "anonima"
+    - "incognito"
+    - "internet banking"
+    - "nubank"
+    - "itau"
+    - "bradesco"
+    - "santander"
+    - "banco do brasil"
+    - "caixa economica"
+    - "btg pactual"
+    - "inter bank"
+    - "bitwarden"
+    - "1password"
+    - "keepass"
+    - "cofre de senhas"
+    - "pix"
+
+# Voz (TTS & Microfone STT)
+voice:
+  enabled: true
+  tts_voice_ptbr: "pt-BR-AntonioNeural"
+  tts_rate: "+5%"
+  output_device_name: null
+  input_device_name: null
+  play_mic_chime: true
+  mic_sample_rate: 16000
+  mic_max_seconds: 25
+  mic_silence_timeout_sec: 1.8
+  hotkey_privacy: "<ctrl>+<shift>+p"
+  hotkey_talk: "<ctrl>+<shift>+<space>"
+
+# Visao Computacional Local (Webcam)
+vision:
+  enabled: true
+  camera_index: 0
+  target_fps: 1.5
+  enable_person_detector: true
+  enable_phone_detector: false
+  phone_detector_interval_sec: 1.2
+  phone_score_threshold: 0.60
+  camera_position: "right"
+  calibrated: false
+  neutral_yaw_deg: 0.0
+  screen_yaw_min_deg: -55.0
+  screen_yaw_max_deg: 25.0
+  neutral_pitch_deg: 0.0
+  neutral_eye_look_down: 0.22
+  phone_pitch_delta_deg: null
+  yaw_tolerance_deg: 22.0
+  pitch_tolerance_deg: 18.0
+
+# Servidor UI Local
+server:
+  host: "127.0.0.1"
+  port: 8765
+  open_browser_on_start: true

@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "focus-guard"
+version = "0.1.0"
+description = "Monitor inteligente multimodal de foco para estudos de concurso público com Coach de IA por voz e visão computacional local."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "pyyaml>=6.0.2",
+    "python-dotenv>=1.0.1",
+    "aiosqlite>=0.20.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "httpx>=0.28.0",
+    "python-multipart>=0.0.18",
+    "google-genai>=1.0.0",
+    "edge-tts>=7.0.0",
+    "pyttsx3>=2.98",
+    "numpy>=1.26.0,<2.3.0",
+    "sounddevice>=0.5.1",
+    "soundfile>=0.12.1",
+    "pygame-ce>=2.5.0",
+    "mss>=9.0.1",
+    "pillow>=11.0.0",
+    "opencv-python-headless>=4.10.0",
+    "mediapipe>=0.10.18",
+    "psutil>=6.1.0",
+    "pywin32>=308; sys_platform == 'win32'",
+    "pycaw>=20240210; sys_platform == 'win32'",
+    "comtypes>=1.4.8; sys_platform == 'win32'",
+    "uiautomation>=2.0.20; sys_platform == 'win32'",
+    "pystray>=0.19.5",
+    "pynput>=1.7.7",
+    "winotify>=1.1.0; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
+[project.scripts]
+focus-guard = "focus_guard.app.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501", "B008", "SIM105"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
